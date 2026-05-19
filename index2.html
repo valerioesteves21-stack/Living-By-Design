@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#06060a"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<link rel="manifest" href="./manifest.json"/>
+<title>STACK RPG</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#06060a;
+  --s1:#0e0e14;
+  --s2:#13131b;
+  --s3:#1a1a26;
+  --b1:#1e1e2e;
+  --b2:#2a2a3e;
+  --b3:#383858;
+  --text:#e8e6f0;
+  --muted:#5a5870;
+  --muted2:#3a3850;
+  --gold:#f5a623;
+  --gold2:#ffd166;
+  --gold-glow:rgba(245,166,35,0.2);
+  --xp:#8b5cf6;
+  --xp2:#a78bfa;
+  --xp-glow:rgba(139,92,246,0.2);
+  --hp:#10b981;
+  --hp2:#34d399;
+  --hp-glow:rgba(16,185,129,0.15);
+  --danger:#ef4444;
+  --warn:#f59e0b;
+  --focus:#38bdf8;
+  --focus-glow:rgba(56,189,248,0.15);
+  --mono:'JetBrains Mono',monospace;
+  --serif:'Cinzel',serif;
+}
+html,body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;overscroll-behavior:none}
+#app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative;padding-top:env(safe-area-inset-top)}
+
+/* ── BG texture ── */
+#app::before{content:'';position:fixed;inset:0;max-width:480px;margin:0 auto;background:radial-gradient(ellipse at 50% 0%,rgba(139,92,246,0.06) 0%,transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(245,166,35,0.04) 0%,transparent 50%);pointer-events:none;z-index:0}
+
+/* ── Character Card ── */
+.char-card{position:relative;padding:20px 20px 0;z-index:1}
+.char-inner{background:var(--s1);border:1px solid var(--b1);border-radius:20px;padding:18px;position:relative;overflow:hidden}
+.char-inner::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(139,92,246,0.04) 0%,transparent 60%);pointer-events:none}
+.char-top{display:flex;align-items:center;gap:14px}
+.avatar{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--xp),var(--xp2));display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;border:1px solid var(--b2);position:relative}
+.avatar::after{content:'';position:absolute;inset:0;border-radius:14px;box-shadow:0 0 20px rgba(139,92,246,0.4);pointer-events:none}
+.char-info{flex:1;min-width:0}
+.char-name{font-family:var(--serif);font-size:17px;color:var(--text);margin-bottom:3px}
+.char-title{font-size:9px;color:var(--xp2);letter-spacing:2.5px;text-transform:uppercase}
+.char-right{text-align:right}
+.level-badge{font-family:var(--serif);font-size:22px;color:var(--gold);line-height:1}
+.level-label{font-size:8px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+
+.bars-section{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.bar-row{display:flex;align-items:center;gap:10px}
+.bar-icon{font-size:11px;width:16px;text-align:center;flex-shrink:0}
+.bar-track{flex:1;height:7px;background:var(--s3);border-radius:99px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:99px;transition:width 0.6s cubic-bezier(.34,1.2,.64,1)}
+.bar-fill.xp-fill{background:linear-gradient(90deg,var(--xp),var(--xp2));box-shadow:0 0 8px var(--xp-glow)}
+.bar-fill.hp-fill{background:linear-gradient(90deg,var(--hp),var(--hp2));box-shadow:0 0 8px var(--hp-glow)}
+.bar-label{font-size:9px;color:var(--muted);width:60px;text-align:right;flex-shrink:0;letter-spacing:0.5px}
+
+.stats-strip{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--b1)}
+.stat-chip{text-align:center}
+.stat-chip .val{font-family:var(--serif);font-size:20px}
+.stat-chip .key{font-size:8px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+.stat-chip.gold .val{color:var(--gold)}
+.stat-chip.xpc .val{color:var(--xp2)}
+.stat-chip.streak-c .val{color:var(--warn)}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:4px;padding:14px 20px;z-index:1;position:relative}
+.tab{flex:1;padding:10px 4px;background:none;border:1px solid var(--b1);border-radius:10px;color:var(--muted);font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all 0.2s;display:flex;flex-direction:column;align-items:center;gap:4px}
+.tab .ti{font-size:16px;line-height:1}
+.tab.active[data-t="quests"]{border-color:var(--hp);color:var(--hp);background:var(--hp-glow)}
+.tab.active[data-t="rest"]{border-color:var(--xp2);color:var(--xp2);background:var(--xp-glow)}
+.tab.active[data-t="raids"]{border-color:var(--focus);color:var(--focus);background:var(--focus-glow)}
+.tab.active[data-t="log"]{border-color:var(--gold);color:var(--gold);background:var(--gold-glow)}
+
+/* ── Content ── */
+.content{flex:1;padding:0 20px 100px;z-index:1;position:relative}
+
+/* ── Cards ── */
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:16px;padding:18px;margin-bottom:12px;position:relative;overflow:hidden}
+.card-tag{font-size:8px;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase;margin-bottom:14px}
+
+/* ── XP Burst (floating +XP) ── */
+.xp-burst{position:fixed;font-family:var(--serif);font-size:16px;font-weight:600;color:var(--xp2);pointer-events:none;z-index:9999;animation:burstUp 1.2s ease forwards}
+@keyframes burstUp{0%{opacity:1;transform:translateY(0) scale(1)}80%{opacity:0.8;transform:translateY(-60px) scale(1.1)}100%{opacity:0;transform:translateY(-80px) scale(0.9)}}
+
+/* ── Quest Items ── */
+.quest-list{display:flex;flex-direction:column;gap:10px}
+.quest-item{background:var(--s2);border:1px solid var(--b1);border-radius:13px;padding:14px 16px;display:flex;align-items:center;gap:12px;transition:all 0.25s;position:relative;overflow:hidden}
+.quest-item.done{border-color:var(--hp);background:rgba(16,185,129,0.04)}
+.quest-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;background:var(--b2);transition:background 0.3s}
+.quest-item.done::before{background:var(--hp)}
+.quest-cb{width:28px;height:28px;border-radius:8px;border:1.5px solid var(--b2);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.25s;color:transparent;font-size:12px}
+.quest-cb.checked{border-color:var(--hp);background:var(--hp);color:#000}
+.quest-body{flex:1;min-width:0}
+.quest-name{font-size:13px;color:var(--text);transition:all 0.2s}
+.quest-name.done{color:var(--muted);text-decoration:line-through}
+.quest-meta{display:flex;align-items:center;gap:8px;margin-top:4px}
+.quest-xp{font-size:9px;color:var(--xp2);letter-spacing:0.5px}
+.quest-streak{font-size:9px;color:var(--warn)}
+.quest-mult{font-size:9px;color:var(--gold);background:rgba(245,166,35,0.12);padding:1px 6px;border-radius:4px}
+.quest-del{background:none;border:none;color:var(--muted2);cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;transition:color 0.2s;font-size:14px;line-height:1}
+.quest-del:hover{color:var(--danger)}
+
+/* ── Add Quest ── */
+.add-row{display:flex;gap:8px;align-items:center}
+.add-row input{flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:10px;padding:11px 14px;color:var(--text);font-size:13px;font-family:var(--mono);outline:none;transition:border-color 0.2s}
+.add-row input:focus{border-color:var(--b3)}
+.add-row input::placeholder{color:var(--muted2)}
+.xp-select{background:var(--s2);border:1px solid var(--b2);border-radius:10px;padding:11px 10px;color:var(--xp2);font-size:12px;font-family:var(--mono);outline:none;cursor:pointer;-webkit-appearance:none}
+.add-go{width:44px;height:44px;border-radius:10px;border:1px solid var(--hp);background:rgba(16,185,129,0.08);color:var(--hp);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;font-size:20px}
+
+/* ── Daily Bonus ── */
+.bonus-card{background:linear-gradient(135deg,rgba(245,166,35,0.08),rgba(139,92,246,0.06));border:1px solid rgba(245,166,35,0.2);border-radius:14px;padding:16px;margin-bottom:12px;display:flex;align-items:center;gap:14px}
+.bonus-icon{font-size:28px;flex-shrink:0}
+.bonus-text .b-title{font-family:var(--serif);font-size:14px;color:var(--gold)}
+.bonus-text .b-sub{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.5}
+
+/* ── Sleep / Rest ── */
+.sleep-chart{display:flex;align-items:flex-end;gap:5px;height:70px}
+.s-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%}
+.s-bar-val{font-size:7px;color:var(--muted);height:11px;display:flex;align-items:center}
+.s-bar-track{flex:1;width:100%;display:flex;align-items:flex-end}
+.s-bar{width:100%;border-radius:3px 3px 2px 2px;transition:height 0.5s cubic-bezier(.34,1.56,.64,1)}
+.s-bar-day{font-size:8px;color:var(--muted);height:11px}
+.s-bar-day.td{color:var(--text)}
+
+.time-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.tf label{display:block;font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+.tf input[type="time"],input[type="text"],textarea{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:10px;padding:10px 13px;color:var(--text);font-size:13px;font-family:var(--mono);outline:none}
+.tf input:focus{border-color:var(--b3)}
+input[type="time"]::-webkit-calendar-picker-indicator{filter:invert(0.4)}
+textarea{resize:none}
+
+.hours-display{text-align:center;padding:10px 0}
+.hours-display .hd-num{font-family:var(--serif);font-size:52px;line-height:1}
+.hours-display .hd-unit{font-size:12px;color:var(--muted);margin-left:4px}
+.hours-display .hd-xp{font-size:11px;color:var(--xp2);margin-top:6px;letter-spacing:1px}
+
+.stars{display:flex;gap:6px;margin-bottom:14px}
+.star-btn{flex:1;padding:9px 0;border-radius:8px;border:1px solid var(--b2);background:var(--s2);color:var(--muted2);cursor:pointer;font-size:15px;text-align:center;transition:all 0.15s}
+.star-btn.on{border-color:var(--xp2);background:rgba(139,92,246,0.1);color:var(--xp2)}
+
+/* ── Buttons ── */
+.btn{width:100%;padding:13px;border-radius:11px;border:1px solid;font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all 0.2s}
+.btn-hp{border-color:var(--hp);color:var(--hp);background:rgba(16,185,129,0.06)}
+.btn-xp{border-color:var(--xp2);color:var(--xp2);background:rgba(139,92,246,0.06)}
+.btn-focus{border-color:var(--focus);color:var(--focus);background:rgba(56,189,248,0.06)}
+.btn-saved{border-color:var(--hp)!important;color:var(--hp)!important;background:rgba(16,185,129,0.12)!important}
+.btn:active{transform:scale(0.98)}
+
+/* ── Focus / Raids ── */
+.raid-timer{display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:10px}
+.rt-circle{width:164px;height:164px;position:relative;display:flex;align-items:center;justify-content:center}
+.rt-circle svg{position:absolute;top:0;left:0;transform:rotate(-90deg)}
+.rt-time{font-family:var(--serif);font-size:42px;color:var(--text);z-index:1;letter-spacing:-1px}
+.rt-label{font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.preset-row{display:flex;gap:8px;margin-bottom:14px}
+.preset-btn{flex:1;padding:9px 0;border-radius:9px;border:1px solid;font-family:var(--mono);font-size:10px;cursor:pointer;transition:all 0.2s;letter-spacing:1px}
+.preset-btn.active-preset{border-color:var(--focus);color:var(--focus);background:var(--focus-glow)}
+.preset-btn:not(.active-preset){border-color:var(--b2);color:var(--muted);background:none}
+.tf-focus{margin-bottom:14px}
+.tf-focus label{display:block;font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+.raid-btns{display:flex;gap:10px}
+.raid-btns .btn{flex:1}
+
+.raid-log{display:flex;flex-direction:column;gap:8px}
+.raid-item{background:var(--s2);border:1px solid var(--b1);border-radius:11px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
+.raid-item .ri-name{font-size:12px;color:var(--text)}
+.raid-item .ri-meta{font-size:9px;color:var(--muted);margin-top:2px}
+.raid-item .ri-right{text-align:right}
+.raid-item .ri-mins{font-family:var(--serif);font-size:20px;color:var(--focus)}
+.raid-item .ri-xp{font-size:9px;color:var(--xp2);margin-top:2px}
+
+/* ── Achievement Log ── */
+.ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ach-item{background:var(--s2);border:1px solid var(--b1);border-radius:12px;padding:14px;transition:all 0.2s}
+.ach-item.unlocked{border-color:rgba(245,166,35,0.3);background:rgba(245,166,35,0.04)}
+.ach-item.locked{opacity:0.4}
+.ach-icon{font-size:22px;margin-bottom:6px}
+.ach-name{font-size:10px;color:var(--text);font-weight:600;margin-bottom:3px;letter-spacing:0.3px}
+.ach-desc{font-size:9px;color:var(--muted);line-height:1.4}
+.ach-item.unlocked .ach-name{color:var(--gold)}
+
+/* ── Level Up Overlay ── */
+#lvlup{position:fixed;inset:0;background:rgba(6,6,10,0.92);z-index:9998;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#lvlup.show{display:flex}
+#lvlup .lu-icon{font-size:64px;animation:luPop 0.5s cubic-bezier(.34,1.56,.64,1) forwards}
+@keyframes luPop{0%{transform:scale(0);opacity:0}100%{transform:scale(1);opacity:1}}
+#lvlup .lu-title{font-family:var(--serif);font-size:32px;color:var(--gold);text-align:center;line-height:1.2}
+#lvlup .lu-sub{font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+#lvlup .lu-btn{margin-top:8px;padding:14px 40px;border-radius:12px;border:1px solid var(--gold);background:var(--gold-glow);color:var(--gold);font-family:var(--mono);font-size:12px;letter-spacing:2px;cursor:pointer}
+.lu-rays{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 45%,rgba(245,166,35,0.12) 0%,transparent 60%)}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--s2);border:1px solid var(--b2);border-radius:99px;padding:9px 20px;font-size:11px;color:var(--hp2);pointer-events:none;opacity:0;transition:all 0.3s;white-space:nowrap;z-index:9997;letter-spacing:0.5px}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:28px 0;color:var(--muted);font-size:11px;line-height:2}
+
+/* ── Divider ── */
+.div{height:1px;background:var(--b1);margin:14px 0}
+
+/* ── Animations ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fadeUp 0.3s ease forwards}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="char-card">
+    <div class="char-inner" id="charCard">
+      <div class="char-top">
+        <div class="avatar" id="avatarEl">⚔️</div>
+        <div class="char-info">
+          <div class="char-name" id="charName">Founder</div>
+          <div class="char-title" id="charTitleEl">Loading...</div>
+        </div>
+        <div class="char-right">
+          <div class="level-badge" id="lvlNum">1</div>
+          <div class="level-label">Level</div>
+        </div>
+      </div>
+      <div class="bars-section">
+        <div class="bar-row">
+          <div class="bar-icon">⚡</div>
+          <div class="bar-track"><div class="bar-fill xp-fill" id="xpBar" style="width:0%"></div></div>
+          <div class="bar-label" id="xpLabel">0 / 100</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-icon">❤️</div>
+          <div class="bar-track"><div class="bar-fill hp-fill" id="hpBar" style="width:100%"></div></div>
+          <div class="bar-label" id="hpLabel">100 HP</div>
+        </div>
+      </div>
+      <div class="stats-strip">
+        <div class="stat-chip gold"><div class="val" id="goldVal">0</div><div class="key">Gold</div></div>
+        <div class="stat-chip xpc"><div class="val" id="totalXpVal">0</div><div class="key">Total XP</div></div>
+        <div class="stat-chip streak-c"><div class="val" id="streakVal">0</div><div class="key">Best Streak</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-t="quests" onclick="switchTab('quests')"><span class="ti">⚔️</span>Quests</button>
+    <button class="tab" data-t="rest" onclick="switchTab('rest')"><span class="ti">🌙</span>Rest</button>
+    <button class="tab" data-t="raids" onclick="switchTab('raids')"><span class="ti">🔥</span>Raids</button>
+    <button class="tab" data-t="log" onclick="switchTab('log')"><span class="ti">📜</span>Log</button>
+  </div>
+
+  <div class="content" id="content"></div>
+</div>
+
+<div id="lvlup">
+  <div class="lu-rays"></div>
+  <div class="lu-icon">🏆</div>
+  <div class="lu-title" id="luTitle">LEVEL UP!</div>
+  <div class="lu-sub" id="luSub">You reached Level 2</div>
+  <button class="lu-btn" onclick="closeLevelUp()">Continue →</button>
+</div>
+<div id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────────────────
+const TITLES = ['Novice','Apprentice','Grinder','Builder','Operator','Strategist','Visionary','Architect','Legend','Mythic'];
+const TITLE_LEVELS = [1,3,5,8,12,17,23,30,40,50];
+const XP_PER_LEVEL = (lvl) => lvl * 120;
+const AVATARS = ['⚔️','🧠','🚀','⚡','🔥','💎','🏆'];
+
+const HABITS_XP = {easy:15,medium:30,hard:50};
+const SLEEP_XP  = {great:80,good:50,ok:25,bad:10};
+const RAID_XP   = {25:40,50:85,90:150};
+const RAID_GOLD = {25:15,50:35,90:65};
+
+const STREAK_MULT = (s) => s>=30?3:s>=14?2:s>=7?1.75:s>=3?1.4:1;
+
+// ─────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────
+let G = {
+  name: 'Founder',
+  avatar: 0,
+  totalXp: 0,
+  level: 1,
+  hp: 100,
+  gold: 0,
+  habits: [],
+  completions: {},    // {date:[id,...]}
+  sleep: {},          // {date:{bedtime,wake,quality,notes,xpAwarded}}
+  raids: [],          // [{id,name,duration,xp,gold,completedAt}]
+  achievements: {},   // {id: true}
+  lastSleepDate: null,
+  xpThisLevel: 0,
+};
+let tab = 'quests';
+let timer = {running:false,secs:25*60,total:25*60,name:'',iv:null};
+
+// ─────────────────────────────────────────────────────────
+// PERSIST
+// ─────────────────────────────────────────────────────────
+function save(){localStorage.setItem('stackrpg',JSON.stringify(G));}
+function load(){
+  try{const d=localStorage.getItem('stackrpg');if(d){const p=JSON.parse(d);G={...G,...p};}}catch(e){}
+}
+
+// ─────────────────────────────────────────────────────────
+// DATE UTILS
+// ─────────────────────────────────────────────────────────
+const today=()=>new Date().toISOString().split('T')[0];
+const last7=()=>Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return d.toISOString().split('T')[0];});
+const shortDay=d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'});
+const fmtDate=d=>new Date(d+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+
+// ─────────────────────────────────────────────────────────
+// LEVEL SYSTEM
+// ─────────────────────────────────────────────────────────
+function getLevel(xp){
+  let lv=1,rem=xp;
+  while(rem>=XP_PER_LEVEL(lv)){rem-=XP_PER_LEVEL(lv);lv++;}
+  return{level:lv,xpInLevel:rem,xpNeeded:XP_PER_LEVEL(lv)};
+}
+function getTitle(lv){
+  let t=TITLES[0];
+  for(let i=TITLE_LEVELS.length-1;i>=0;i--){if(lv>=TITLE_LEVELS[i]){t=TITLES[i];break;}}
+  return t;
+}
+function getBestStreak(){
+  let best=0;
+  G.habits.forEach(h=>{let s=calcStreak(h.id);if(s>best)best=s;});
+  return best;
+}
+
+function addXp(amount,label,x,y){
+  const oldLv=getLevel(G.totalXp).level;
+  G.totalXp=Math.max(0,G.totalXp+amount);
+  save();
+  updateCharCard();
+  const newLv=getLevel(G.totalXp).level;
+  if(newLv>oldLv)setTimeout(()=>showLevelUp(newLv),300);
+  if(amount>0)spawnXpBurst('+'+amount+' XP',x,y);
+}
+
+// ─────────────────────────────────────────────────────────
+// HP SYSTEM
+// ─────────────────────────────────────────────────────────
+function getPrevDay(d){const dt=new Date(d+'T12:00:00');dt.setDate(dt.getDate()-1);return dt.toISOString().split('T')[0];}
+
+function calcHp(){return G.hp||100;}
+
+function clampHp(v){return Math.min(100,Math.max(0,v));}
+
+function modHp(delta,reason){
+  G.hp=clampHp((G.hp||100)+delta);
+  save();updateCharCard();
+  if(delta<0)toast('❤️ '+reason+' ('+delta+' HP)','var(--danger)');
+  else toast('❤️ '+reason+' (+'+delta+' HP)','var(--hp2)');
+}
+
+// Runs once per day on app open — checks yesterday's performance
+function dailyHpCheck(){
+  const d=today();
+  if(G.lastHpCheck===d)return; // already ran today
+  G.lastHpCheck=d;
+  const prev=getPrevDay(d);
+  const penalties=[];
+
+  // 1. Sleep-based HP restoration from last night
+  const sleepEntry=G.sleep[prev]||G.sleep[d];
+  if(sleepEntry&&sleepEntry.bedtime&&sleepEntry.wake){
+    const h=parseFloat(calcHours(sleepEntry.bedtime,sleepEntry.wake)||0);
+    let restore=0;
+    if(h>=7)restore=100-G.hp; // full restore
+    else if(h>=6)restore=clampHp(85)-G.hp;
+    else if(h>=5)restore=clampHp(65)-G.hp;
+    else if(h>=3)restore=clampHp(40)-G.hp;
+    if(restore>0)penalties.push({d:restore,r:'Rested well'});
+    else if(restore<0)penalties.push({d:restore,r:'Poor sleep'});
+  } else {
+    // No sleep logged = decay
+    penalties.push({d:-15,r:'No sleep logged'});
+  }
+
+  // 2. Quest completion rate < 80%
+  if(G.habits.length>0){
+    const done=(G.completions[prev]||[]).length;
+    const total=G.habits.length;
+    const rate=done/total;
+    if(rate===0){
+      penalties.push({d:-25,r:'No quests completed yesterday'});
+    } else if(rate<0.8){
+      penalties.push({d:-15,r:'Less than 80% quests done'});
+    }
+  }
+
+  // 3. Broken high-streak habits (streak was 3+ but not completed yesterday)
+  G.habits.forEach(h=>{
+    const prevDone=(G.completions[prev]||[]).includes(h.id);
+    if(!prevDone){
+      // Check streak as of day before prev
+      const dayBefore=getPrevDay(prev);
+      const hadStreak=(G.completions[dayBefore]||[]).includes(h.id);
+      if(hadStreak){
+        // Count streak up to dayBefore
+        let s=0;const dt=new Date(dayBefore+'T12:00:00');
+        while((G.completions[dt.toISOString().split('T')[0]]||[]).includes(h.id)){s++;dt.setDate(dt.getDate()-1);if(s>365)break;}
+        if(s>=7)penalties.push({d:-20,r:'7+ day streak broken: '+h.name});
+        else if(s>=3)penalties.push({d:-10,r:'3+ day streak broken: '+h.name});
+      }
+    }
+  });
+
+  // 4. Apply all penalties/restores
+  if(penalties.length>0){
+    let total=0;
+    penalties.forEach(p=>total+=p.d);
+    G.hp=clampHp((G.hp||100)+total);
+    save();updateCharCard();
+    // Show summary after short delay
+    setTimeout(()=>{
+      const neg=penalties.filter(p=>p.d<0);
+      const pos=penalties.filter(p=>p.d>0);
+      if(neg.length>0)neg.forEach(p=>setTimeout(()=>toast('❤️ '+p.r+' ('+p.d+' HP)','var(--danger)'),300));
+      if(pos.length>0)pos.forEach(p=>setTimeout(()=>toast('❤️ '+p.r+' (+'+p.d+' HP)','var(--hp2)'),300));
+    },800);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────
+function calcHours(bt,wk){
+  if(!bt||!wk)return null;
+  const[bh,bm]=bt.split(':').map(Number);const[wh,wm]=wk.split(':').map(Number);
+  let m=(wh*60+wm)-(bh*60+bm);if(m<0)m+=1440;return(m/60).toFixed(1);
+}
+function calcStreak(id){
+  let s=0;const d=new Date();
+  while(true){
+    const k=d.toISOString().split('T')[0];
+    if(!(G.completions[k]||[]).includes(id))break;
+    s++;d.setDate(d.getDate()-1);if(s>365)break;
+  }
+  return s;
+}
+
+// ─────────────────────────────────────────────────────────
+// UI HELPERS
+// ─────────────────────────────────────────────────────────
+function toast(msg,col){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.color=col||'var(--hp2)';
+  t.classList.add('show');
+  clearTimeout(t._to);t._to=setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+function spawnXpBurst(text,x,y){
+  const el=document.createElement('div');
+  el.className='xp-burst';
+  el.textContent=text;
+  el.style.left=(x||window.innerWidth/2)+'px';
+  el.style.top=(y||200)+'px';
+  document.body.appendChild(el);
+  el.addEventListener('animationend',()=>el.remove());
+}
+
+function showLevelUp(lv){
+  document.getElementById('luTitle').textContent='LEVEL '+lv+'!';
+  document.getElementById('luSub').textContent='You are now '+getTitle(lv);
+  document.getElementById('lvlup').classList.add('show');
+  if(navigator.vibrate)navigator.vibrate([100,50,100,50,300]);
+}
+function closeLevelUp(){document.getElementById('lvlup').classList.remove('show');}
+
+// ─────────────────────────────────────────────────────────
+// CHAR CARD UPDATE
+// ─────────────────────────────────────────────────────────
+function updateCharCard(){
+  const{level,xpInLevel,xpNeeded}=getLevel(G.totalXp);
+  const hp=calcHp();
+  document.getElementById('lvlNum').textContent=level;
+  document.getElementById('charName').textContent=G.name;
+  document.getElementById('charTitleEl').textContent=getTitle(level);
+  document.getElementById('avatarEl').textContent=AVATARS[G.avatar%AVATARS.length];
+  document.getElementById('xpBar').style.width=(xpInLevel/xpNeeded*100)+'%';
+  document.getElementById('xpLabel').textContent=xpInLevel+' / '+xpNeeded;
+  document.getElementById('hpBar').style.width=hp+'%';
+  document.getElementById('hpBar').style.background=hp<40?'linear-gradient(90deg,#ef4444,#f87171)':hp<70?'linear-gradient(90deg,#f59e0b,#fbbf24)':'linear-gradient(90deg,var(--hp),var(--hp2))';
+  document.getElementById('hpLabel').textContent=hp+' HP';
+  document.getElementById('goldVal').textContent=G.gold;
+  document.getElementById('totalXpVal').textContent=G.totalXp;
+  document.getElementById('streakVal').textContent=getBestStreak();
+}
+
+// ─────────────────────────────────────────────────────────
+// TAB
+// ─────────────────────────────────────────────────────────
+function switchTab(t){
+  tab=t;
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.t===t));
+  render();
+}
+
+// ─────────────────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────────────────
+function render(){
+  const el=document.getElementById('content');
+  if(tab==='quests')el.innerHTML=renderQuests();
+  else if(tab==='rest')el.innerHTML=renderRest();
+  else if(tab==='raids')el.innerHTML=renderRaids();
+  else if(tab==='log')el.innerHTML=renderLog();
+  el.classList.remove('fu');void el.offsetWidth;el.classList.add('fu');
+}
+
+// ─────────────────────────────────────────────────────────
+// QUESTS
+// ─────────────────────────────────────────────────────────
+function renderQuests(){
+  const d=today();
+  const done=G.completions[d]||[];
+  const total=G.habits.length;
+  const doneCount=done.length;
+  const allDone=total>0&&doneCount===total;
+  const hpMod=calcHp();
+  const hpNote=hpMod<60?` <span style="color:var(--danger);font-size:9px">(HP penalty: ${hpMod}%)</span>`:'';
+
+  const bonusEl=allDone?`
+  <div class="bonus-card">
+    <div class="bonus-icon">🌟</div>
+    <div class="bonus-text">
+      <div class="b-title">Perfect Day!</div>
+      <div class="b-sub">All quests complete. +100 bonus XP awarded.</div>
+    </div>
+  </div>`:'';
+
+  const pct=total?Math.round(doneCount/total*100):0;
+  const pc=pct===100?'var(--hp)':pct>=60?'var(--xp2)':'var(--focus)';
+
+  const list=G.habits.map(h=>{
+    const isDone=done.includes(h.id);
+    const streak=calcStreak(h.id);
+    const mult=STREAK_MULT(streak);
+    const xpBase=HABITS_XP[h.diff||'medium'];
+    const xpFinal=Math.round(xpBase*mult*(hpMod/100));
+    const multBadge=mult>1?`<span class="quest-mult">×${mult.toFixed(2)}</span>`:'';
+    const streakBadge=streak>0?`<span class="quest-streak">🔥 ${streak}d</span>`:'';
+    return `<div class="quest-item ${isDone?'done':''}" id="qi-${h.id}">
+      <button class="quest-cb ${isDone?'checked':''}" onclick="toggleQuest('${h.id}',event)">
+        ${isDone?'✓':''}
+      </button>
+      <div class="quest-body">
+        <div class="quest-name ${isDone?'done':''}">${h.name}</div>
+        <div class="quest-meta">
+          <span class="quest-xp">+${xpFinal} XP</span>
+          ${streakBadge}${multBadge}
+        </div>
+      </div>
+      <button class="quest-del" onclick="deleteQuest('${h.id}')">✕</button>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="card-tag" style="margin-bottom:0">Daily Quests — ${fmtDate(d)}</div>
+      <div style="font-size:10px;color:${pc}">${doneCount}/${total} <span style="color:var(--muted)">complete</span></div>
+    </div>
+    <div style="background:var(--s3);border-radius:99px;height:6px;overflow:hidden">
+      <div style="height:100%;border-radius:99px;background:${pc};width:${pct}%;transition:width 0.5s cubic-bezier(.34,1.2,.64,1)"></div>
+    </div>
+    ${hpNote?`<div style="margin-top:8px;font-size:9px;color:var(--muted)">XP modified by HP${hpNote}</div>`:''}
+  </div>
+
+  ${bonusEl}
+
+  <div class="card">
+    <div class="card-tag">New Quest</div>
+    <div class="add-row" style="margin-bottom:10px">
+      <input type="text" id="qInput" placeholder="What do you need to do daily?" maxlength="60" onkeydown="if(event.key==='Enter')addQuest()"/>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div style="font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;flex-shrink:0">Difficulty</div>
+      <select id="qDiff" class="xp-select" style="flex:1">
+        <option value="easy">Easy — +15 XP</option>
+        <option value="medium" selected>Medium — +30 XP</option>
+        <option value="hard">Hard — +50 XP</option>
+      </select>
+      <button class="add-go" onclick="addQuest()">+</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-tag">Quest Board (${total})</div>
+    ${total===0?`<div class="empty">No quests yet.<br/>Add your first daily quest above.</div>`:`<div class="quest-list">${list}</div>`}
+  </div>`;
+}
+
+function toggleQuest(id,ev){
+  const d=today();
+  if(!G.completions[d])G.completions[d]=[];
+  const idx=G.completions[d].indexOf(id);
+  const habit=G.habits.find(h=>h.id===id);
+  if(!habit)return;
+  if(idx>-1){
+    G.completions[d].splice(idx,1);
+    const xp=Math.round(HABITS_XP[habit.diff||'medium']);
+    addXp(-xp);
+    toast('Quest unchecked');
+  }else{
+    G.completions[d].push(id);
+    const streak=calcStreak(id);
+    const mult=STREAK_MULT(streak);
+    const hp=calcHp();
+    const xp=Math.round(HABITS_XP[habit.diff||'medium']*mult*(hp/100));
+    addXp(xp,'+'+xp+' XP',ev?.clientX,ev?.clientY);
+    checkAchievements();
+    const all=G.habits.every(h=>G.completions[d].includes(h.id));
+    if(all){
+      setTimeout(()=>{addXp(100,'+100 XP BONUS');toast('🌟 Perfect Day! +100 XP bonus!','var(--gold)');},400);
+    }else{
+      toast('Quest complete! +'+xp+' XP');
+    }
+  }
+  save();render();updateCharCard();
+}
+
+function addQuest(){
+  const inp=document.getElementById('qInput');
+  const name=inp?.value?.trim();
+  if(!name)return;
+  const diff=document.getElementById('qDiff')?.value||'medium';
+  G.habits.push({id:uid(),name,diff,createdAt:today()});
+  save();toast('Quest added: "'+name+'"');render();
+}
+
+function deleteQuest(id){
+  G.habits=G.habits.filter(h=>h.id!==id);
+  Object.keys(G.completions).forEach(d=>{G.completions[d]=G.completions[d].filter(i=>i!==id);});
+  save();toast('Quest removed');render();
+}
+
+// ─────────────────────────────────────────────────────────
+// REST (SLEEP)
+// ─────────────────────────────────────────────────────────
+function renderRest(){
+  const d=today();
+  const entry=G.sleep[d]||{};
+  const days=last7();
+  const maxH=10;
+
+  const bars=days.map(day=>{
+    const e=G.sleep[day];
+    const h=e?parseFloat(calcHours(e.bedtime,e.wake)||0):0;
+    const pct=Math.min(h/maxH,1)*100;
+    const col=h>=7?'#10b981':h>=5?'#f59e0b':h>0?'#ef4444':'#1e1e2e';
+    const glow=day===d&&h>0?`box-shadow:0 0 10px ${col}55`:'';
+    const op=day===d?1:0.6;
+    return `<div class="s-bar-wrap">
+      <div class="s-bar-val">${h>0?h+'h':''}</div>
+      <div class="s-bar-track"><div class="s-bar" style="height:${pct}%;background:${col};${glow};opacity:${op}"></div></div>
+      <div class="s-bar-day ${day===d?'td':''}">${shortDay(day)}</div>
+    </div>`;
+  }).join('');
+
+  const hours=calcHours(entry.bedtime,entry.wake);
+  const hNum=parseFloat(hours||0);
+  const hCol=hNum>=7?'var(--hp)':hNum>=5?'var(--warn)':hNum>0?'var(--danger)':'var(--muted)';
+  const xpPreview=hNum>=7?SLEEP_XP.great:hNum>=6?SLEEP_XP.good:hNum>=5?SLEEP_XP.ok:hNum>0?SLEEP_XP.bad:0;
+
+  const stars=[1,2,3,4,5].map(n=>`<button class="star-btn ${(entry.quality||0)>=n?'on':''}" onclick="setSleepQ(${n})">★</button>`).join('');
+
+  const avgH=days.map(d=>{const e=G.sleep[d];return e?parseFloat(calcHours(e.bedtime,e.wake)||0):0;}).filter(h=>h>0);
+  const avg=avgH.length?(avgH.reduce((a,b)=>a+b,0)/avgH.length).toFixed(1):'—';
+
+  return `
+  <div class="card">
+    <div class="card-tag">7-Day Rest Log</div>
+    <div class="sleep-chart">${bars}</div>
+    <div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--b1)">
+      <div style="font-size:9px;color:var(--muted)">Weekly avg</div>
+      <div style="font-size:12px;color:var(--xp2);font-family:var(--serif)">${avg}${avg!=='—'?'h':''}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-tag">Log Rest — ${fmtDate(d)}</div>
+    <div class="time-grid">
+      <div class="tf"><label>Bedtime</label><input type="time" id="sbt" value="${entry.bedtime||''}" onchange="sleepFieldChange('bedtime',this.value)"/></div>
+      <div class="tf"><label>Wake up</label><input type="time" id="swk" value="${entry.wake||''}" onchange="sleepFieldChange('wake',this.value)"/></div>
+    </div>
+    ${hours?`<div class="hours-display">
+      <span class="hd-num" style="color:${hCol}">${hours}</span><span class="hd-unit">hours</span>
+      ${xpPreview>0?`<div class="hd-xp">+${xpPreview} XP on save · HP → ${hNum>=7?100:hNum>=6?85:hNum>=5?65:40}%</div>`:''}
+    </div>`:''}
+    <div class="card-tag" style="margin-top:4px">Sleep quality</div>
+    <div class="stars">${stars}</div>
+    <div class="tf" style="margin-bottom:14px"><label>Notes</label><textarea id="snotes" rows="2" placeholder="How did you feel when you woke up?">${entry.notes||''}</textarea></div>
+    <button class="btn btn-xp" id="sleepSaveBtn" onclick="saveSleep()">Log Rest & Claim XP</button>
+  </div>`;
+}
+
+function sleepFieldChange(field,val){
+  const d=today();
+  if(!G.sleep[d])G.sleep[d]={};
+  G.sleep[d][field]=val;
+  save();render();
+}
+function setSleepQ(n){
+  const d=today();
+  if(!G.sleep[d])G.sleep[d]={};
+  G.sleep[d].quality=n;
+  document.querySelectorAll('.star-btn').forEach((s,i)=>s.classList.toggle('on',i<n));
+}
+function saveSleep(){
+  const d=today();
+  if(!G.sleep[d])G.sleep[d]={};
+  const notes=document.getElementById('snotes');
+  if(notes)G.sleep[d].notes=notes.value;
+  if(G.sleep[d].xpAwarded){toast('Already logged for today!','var(--warn)');return;}
+  const hours=calcHours(G.sleep[d].bedtime,G.sleep[d].wake);
+  const h=parseFloat(hours||0);
+  if(!h){toast('Add bedtime and wake time first','var(--warn)');return;}
+  const xp=h>=7?SLEEP_XP.great:h>=6?SLEEP_XP.good:h>=5?SLEEP_XP.ok:SLEEP_XP.bad;
+  const hpRestore=h>=7?100:h>=6?85:h>=5?65:h>=3?40:20;
+  const hpDelta=hpRestore-G.hp;
+  G.sleep[d].xpAwarded=true;
+  G.hp=clampHp(hpRestore);
+  addXp(xp,'+'+xp+' XP');
+  checkAchievements();
+  save();
+  const btn=document.getElementById('sleepSaveBtn');
+  if(btn){btn.classList.add('btn-saved');btn.textContent='✓ Rest Logged';setTimeout(()=>{btn.classList.remove('btn-saved');btn.textContent='Log Rest & Claim XP';},2000);}
+  toast('Rest logged! +'+xp+' XP','var(--xp2)');
+  render();updateCharCard();
+}
+
+// ─────────────────────────────────────────────────────────
+// RAIDS (FOCUS)
+// ─────────────────────────────────────────────────────────
+function renderRaids(){
+  const d=today();
+  const todayRaids=G.raids.filter(r=>r.completedAt&&r.completedAt.startsWith(d));
+  const totalMins=todayRaids.reduce((a,b)=>a+b.duration,0);
+  const totalGold=todayRaids.reduce((a,b)=>a+(b.gold||0),0);
+
+  const r=70,circ=2*Math.PI*r;
+  const pct=1-(timer.secs/timer.total);
+  const off=circ-(pct*circ);
+  const col=timer.running?'var(--focus)':'var(--b3)';
+  const mins=String(Math.floor(timer.secs/60)).padStart(2,'0');
+  const secs=String(timer.secs%60).padStart(2,'0');
+
+  const presets=[25,50,90].map(m=>`<button class="preset-btn ${timer.total===m*60?'active-preset':''}" onclick="setRaidTimer(${m})">${m}m · +${RAID_XP[m]}XP</button>`).join('');
+
+  const raidLog=[...G.raids].reverse().slice(0,6).map(r=>{
+    const dt=new Date(r.completedAt);
+    const tl=dt.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    return`<div class="raid-item">
+      <div><div class="ri-name">${r.name||'Focus Raid'}</div><div class="ri-meta">${tl}</div></div>
+      <div class="ri-right"><div class="ri-mins">${r.duration}m</div><div class="ri-xp">+${r.xp} XP · +${r.gold}🪙</div></div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+    <div class="stat-chip" style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:12px;text-align:center">
+      <div class="val" style="font-family:var(--serif);font-size:20px;color:var(--focus)">${todayRaids.length}</div>
+      <div class="key" style="font-size:8px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px">Raids</div>
+    </div>
+    <div class="stat-chip" style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:12px;text-align:center">
+      <div class="val" style="font-family:var(--serif);font-size:20px;color:var(--focus)">${totalMins}m</div>
+      <div class="key" style="font-size:8px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px">Focus</div>
+    </div>
+    <div class="stat-chip" style="background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:12px;text-align:center">
+      <div class="val" style="font-family:var(--serif);font-size:20px;color:var(--gold)">+${totalGold}</div>
+      <div class="key" style="font-size:8px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px">Gold</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-tag">Focus Raid</div>
+    <div class="raid-timer">
+      <div class="rt-circle">
+        <svg width="164" height="164" viewBox="0 0 164 164">
+          <circle cx="82" cy="82" r="${r}" fill="none" stroke="#1a1a26" stroke-width="7"/>
+          <circle cx="82" cy="82" r="${r}" fill="none" stroke="${col}" stroke-width="7"
+            stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" stroke-linecap="round"
+            style="transition:stroke-dashoffset 1s linear,stroke 0.3s;filter:${timer.running?'drop-shadow(0 0 6px var(--focus))':'none'}"/>
+        </svg>
+        <div class="rt-time">${mins}:${secs}</div>
+      </div>
+      <div class="rt-label">${timer.running?'Raid in progress...':'Choose your duration'}</div>
+    </div>
+    <div class="preset-row">${presets}</div>
+    <div class="tf-focus">
+      <label>Raid name</label>
+      <input type="text" id="raidName" value="${timer.name}" placeholder="What are you raiding on?" onchange="timer.name=this.value" maxlength="60"/>
+    </div>
+    <div class="raid-btns">
+      <button class="btn btn-focus" onclick="${timer.running?'pauseRaid()':'startRaid()'}">
+        ${timer.running?'⏸ Pause Raid':'⚔️ Start Raid'}
+      </button>
+      <button class="btn" onclick="resetRaid()" style="border-color:var(--b2);color:var(--muted);background:none;max-width:80px">Reset</button>
+    </div>
+  </div>
+
+  ${G.raids.length>0?`<div class="card"><div class="card-tag">Raid History</div><div class="raid-log">${raidLog}</div></div>`:''}`;
+}
+
+function setRaidTimer(m){if(timer.running)return;timer.total=m*60;timer.secs=m*60;render();}
+function startRaid(){
+  if(timer.running)return;
+  timer.running=true;
+  const rn=document.getElementById('raidName');
+  if(rn)timer.name=rn.value;
+  timer.iv=setInterval(()=>{
+    timer.secs--;
+    if(timer.secs<=0){clearInterval(timer.iv);timer.running=false;completeRaid();return;}
+    updateRaidDisplay();
+  },1000);
+  render();
+}
+function pauseRaid(){clearInterval(timer.iv);timer.running=false;render();}
+function resetRaid(){clearInterval(timer.iv);timer.running=false;timer.secs=timer.total;render();}
+function completeRaid(){
+  const dur=Math.round(timer.total/60);
+  const xp=RAID_XP[dur]||40;
+  const gold=RAID_GOLD[dur]||15;
+  const name=timer.name||'Focus Raid';
+  G.raids.push({id:uid(),name,duration:dur,xp,gold,completedAt:new Date().toISOString()});
+  G.gold+=gold;
+  addXp(xp,'+'+xp+' XP');
+  checkAchievements();
+  save();
+  timer.secs=timer.total;
+  toast('⚔️ Raid complete! +'+xp+' XP & +'+gold+'🪙','var(--focus)');
+  if(navigator.vibrate)navigator.vibrate([150,80,150,80,300]);
+  render();updateCharCard();
+}
+function updateRaidDisplay(){
+  const m=String(Math.floor(timer.secs/60)).padStart(2,'0');
+  const s=String(timer.secs%60).padStart(2,'0');
+  const el=document.querySelector('.rt-time');if(el)el.textContent=m+':'+s;
+  const r=70,circ=2*Math.PI*r;
+  const off=circ-((1-timer.secs/timer.total)*circ);
+  const c=document.querySelectorAll('.rt-circle circle')[1];
+  if(c)c.style.strokeDashoffset=off.toFixed(2);
+}
+
+// ─────────────────────────────────────────────────────────
+// LOG / ACHIEVEMENTS
+// ─────────────────────────────────────────────────────────
+const ACHIEVEMENTS=[
+  {id:'first_quest',icon:'⚔️',name:'First Blood',desc:'Complete your first quest',check:()=>Object.values(G.completions).some(a=>a.length>0)},
+  {id:'streak3',icon:'🔥',name:'On Fire',desc:'Maintain a 3-day streak',check:()=>G.habits.some(h=>calcStreak(h.id)>=3)},
+  {id:'streak7',icon:'💥',name:'Unstoppable',desc:'7-day streak on any habit',check:()=>G.habits.some(h=>calcStreak(h.id)>=7)},
+  {id:'streak30',icon:'🌟',name:'Legendary Run',desc:'30-day streak on any habit',check:()=>G.habits.some(h=>calcStreak(h.id)>=30)},
+  {id:'perfect_day',icon:'🏆',name:'Perfect Day',desc:'Complete all quests in a day',check:()=>Object.keys(G.completions).some(d=>G.habits.length>0&&G.habits.every(h=>G.completions[d]?.includes(h.id)))},
+  {id:'great_sleep',icon:'😴',name:'Deep Sleeper',desc:'Log 7+ hours of sleep',check:()=>Object.values(G.sleep).some(s=>parseFloat(calcHours(s.bedtime,s.wake)||0)>=7)},
+  {id:'first_raid',icon:'⚡',name:'First Raid',desc:'Complete a focus raid',check:()=>G.raids.length>0},
+  {id:'deep_raid',icon:'🧠',name:'Deep Work',desc:'Complete a 90-min raid',check:()=>G.raids.some(r=>r.duration>=90)},
+  {id:'100gold',icon:'🪙',name:'Gold Collector',desc:'Accumulate 100 gold',check:()=>G.gold>=100},
+  {id:'level5',icon:'💎',name:'Operator',desc:'Reach Level 5',check:()=>getLevel(G.totalXp).level>=5},
+  {id:'level10',icon:'👑',name:'Visionary',desc:'Reach Level 10',check:()=>getLevel(G.totalXp).level>=10},
+  {id:'10quests',icon:'📋',name:'Quest Master',desc:'Add 10 daily quests',check:()=>G.habits.length>=10},
+];
+
+function checkAchievements(){
+  let newUnlock=false;
+  ACHIEVEMENTS.forEach(a=>{
+    if(!G.achievements[a.id]&&a.check()){
+      G.achievements[a.id]=true;
+      newUnlock=true;
+      setTimeout(()=>toast('🏆 Achievement: '+a.name,'var(--gold)'),500);
+    }
+  });
+  if(newUnlock)save();
+}
+
+function renderLog(){
+  const d=today();
+  // Build activity feed from all data
+  const events=[];
+  [...G.raids].forEach(r=>events.push({time:new Date(r.completedAt).getTime(),icon:'⚔️',text:`Raid: ${r.name||'Focus Raid'} — ${r.duration}m`,xp:r.xp,col:'var(--focus)'}));
+  Object.entries(G.sleep).forEach(([date,s])=>{
+    if(s.xpAwarded){
+      const h=parseFloat(calcHours(s.bedtime,s.wake)||0);
+      events.push({time:new Date(date+'T09:00:00').getTime(),icon:'🌙',text:`Rest: ${h}h sleep on ${fmtDate(date)}`,xp:h>=7?SLEEP_XP.great:h>=6?SLEEP_XP.good:h>=5?SLEEP_XP.ok:SLEEP_XP.bad,col:'var(--xp2)'});
+    }
+  });
+  events.sort((a,b)=>b.time-a.time);
+  const feed=events.slice(0,12).map(e=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:11px;margin-bottom:8px">
+      <div style="font-size:20px;flex-shrink:0">${e.icon}</div>
+      <div style="flex:1;font-size:11px;color:var(--text)">${e.text}</div>
+      <div style="font-size:11px;color:${e.col};flex-shrink:0">+${e.xp} XP</div>
+    </div>`).join('');
+
+  const achHtml=ACHIEVEMENTS.map(a=>{
+    const unlocked=!!G.achievements[a.id];
+    return`<div class="ach-item ${unlocked?'unlocked':'locked'}">
+      <div class="ach-icon">${a.icon}</div>
+      <div class="ach-name">${a.name}</div>
+      <div class="ach-desc">${a.desc}</div>
+    </div>`;
+  }).join('');
+
+  return`
+  <div class="card">
+    <div class="card-tag">Achievements (${Object.keys(G.achievements).length}/${ACHIEVEMENTS.length})</div>
+    <div class="ach-grid">${achHtml}</div>
+  </div>
+  <div class="card">
+    <div class="card-tag">Activity Feed</div>
+    ${events.length===0?`<div class="empty">No activity yet.<br/>Start a quest or raid.</div>`:feed}
+  </div>
+  <div class="card">
+    <div class="card-tag">Character Name</div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="nameInput" value="${G.name}" maxlength="20" placeholder="Enter your name" style="flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:10px;padding:10px 13px;color:var(--text);font-size:13px;font-family:var(--mono);outline:none"/>
+      <button onclick="saveName()" class="add-go" style="border-color:var(--gold);background:var(--gold-glow);color:var(--gold)">✓</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      ${AVATARS.map((a,i)=>`<button onclick="setAvatar(${i})" style="width:44px;height:44px;border-radius:10px;border:1px solid ${G.avatar===i?'var(--gold)':'var(--b2)'};background:${G.avatar===i?'var(--gold-glow)':'var(--s2)'};font-size:20px;cursor:pointer">${a}</button>`).join('')}
+    </div>
+  </div>`;
+}
+
+function saveName(){const i=document.getElementById('nameInput');if(i&&i.value.trim()){G.name=i.value.trim();save();updateCharCard();toast('Name updated');}}
+function setAvatar(i){G.avatar=i;save();updateCharCard();render();}
+
+// ─────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────
+(async function init(){
+  load();
+  if(G.hp===undefined)G.hp=100;
+  dailyHpCheck();
+  if('serviceWorker' in navigator){try{await navigator.serviceWorker.register('./sw.js');}catch(e){}}
+  updateCharCard();
+  render();
+  // Set timer name listener on re-renders
+  document.addEventListener('input',e=>{if(e.target.id==='raidName')timer.name=e.target.value;});
+})();
+</script>
+</body>
+</html>
